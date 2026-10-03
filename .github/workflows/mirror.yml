@@ -1,0 +1,40 @@
+name: mirror
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [scripts/**, .github/**]
+
+permissions:
+  contents: write
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: node scripts/pull-ext.mjs
+
+      - uses: actions/checkout@v4
+        with:
+          ref: Repo
+          path: pub
+
+      - name: publish
+        working-directory: pub
+        run: |
+          mkdir -p apk icon
+          cp -f ../dist/apk/*.apk apk/
+          cp -f ../dist/icon/*.png icon/
+          cp -f ../dist/index.min.json .
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "mirror update"
+          git push origin Repo
